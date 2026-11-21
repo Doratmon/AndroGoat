@@ -46,7 +46,7 @@ class TrafficActivity : AppCompatActivity() {
             doPinning()
         }
 
-        //Pinning Call - Native
+        //TODO: Pinning Call - Native
         PinningButton1.setOnClickListener {
             run(httpsurl1)
         }
@@ -74,25 +74,45 @@ class TrafficActivity : AppCompatActivity() {
 
     fun doPinning()
     {
-        CoroutineScope(Dispatchers.IO).launch {
-            val url="owasp.org"
-            try {
-                val pinner1 = CertificatePinner.Builder()
-                    .add(url, "sha256/5gsjyidrmWjcLRClfCk+Dd6O0nx1CyFrVUW5wVkwEx0=")
-                    .add(url, "sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=")
-                    .add(url, "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=")
-                    .build()
-                val client = OkHttpClient.Builder().certificatePinner(pinner1).build()
-                val request = Request.Builder()
-                    .url("https://"+url)
-                    .build()
-                //Toast.makeText(this@TrafficActivity, "Request Sent to https://"+url, Toast.LENGTH_LONG).show()
-                val response = client.newCall(request).execute()
-                Log.v("Response", "${response.body?.string()}")
-            } catch (e: Exception) {
-                //Toast.makeText(this@TrafficActivity, "Pinning Verification Failed", Toast.LENGTH_LONG).show()
-                e.printStackTrace()
+        val url="mas.owasp.org"
+        try {
+            val pinner1 = CertificatePinner.Builder()
+                .add(url, "sha256/5gsjyidrmWjcLRClfCk+Dd6O0nx1CyFrVUW5wVkwEx0=")
+                .add(url, "sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=")
+                .add(url, "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=")
+                .build()
+            val client = OkHttpClient.Builder().certificatePinner(pinner1).build()
+            val request = Request.Builder()
+                .url("https://"+url)
+                .build()
+            Toast.makeText(this, "Request sent to "+url+" Please bypass Pinning", Toast.LENGTH_LONG).show()
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e("TrafficActivity", "Pinned request failed", e)
+                    runOnUiThread {
+                        Toast.makeText(this@TrafficActivity, "Bypass failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    try {
+                        response.use {
+                            Log.v("Response", "${it.body?.string()}")
+                            val statusCode = it.code
+                            runOnUiThread {
+                                Toast.makeText(this@TrafficActivity, "Bypass successfully. HTTP $statusCode", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    } catch (e: IOException) {
+                        onFailure(call, e)
+                    }
+                }
+            })
+        } catch (e: Exception) {
+            runOnUiThread {
+                Toast.makeText(this@TrafficActivity, "Request failed: ${e.message}", Toast.LENGTH_LONG).show()
             }
+            e.printStackTrace()
         }
 
     }//doPinning*/
